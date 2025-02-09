@@ -8,6 +8,8 @@
 #define LOAD_FACTOR 0.7
 #define MAX_PROBE_DEPTH 15
 
+unsigned int hash(const char *key);
+
 typedef struct {
     char *key;
     void *value;
@@ -27,6 +29,15 @@ typedef struct {
     size_t max_items;
     size_t current_items;
 } LRUCache;
+
+unsigned int hash(const char *key) {
+    unsigned int hashval = 5381;
+    int c;
+    while ((c = *key++)) {
+        hashval = ((hashval << 5) + hashval) + c;
+    }
+    return hashval;
+}
 
 // Robin Hood 해싱 삽입 로직
 size_t robin_hood_probe(HashTable *table, const char *key, size_t *probe_count) {
