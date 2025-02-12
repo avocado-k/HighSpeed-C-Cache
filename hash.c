@@ -52,6 +52,20 @@ size_t robin_hood_probe(struct HashTable *table, const char *key, size_t *probe_
     return -1;  // probe failed
 }
 
+void hash_table_remove(struct HashTable *table, const char *key) {
+    pthread_rwlock_wrlock(&table->rwlock);
+    size_t probe_count = 0;
+    size_t index = robin_hood_probe(table, key, &probe_count);
+    
+    if (index != (size_t)-1 && table->entries[index].key != NULL) {
+        free(table->entries[index].key);
+        table->entries[index].key = NULL;
+        table->entries[index].value = NULL;
+        table->size--;
+    }
+    pthread_rwlock_unlock(&table->rwlock);
+}
+
 // Read-Write Lock 기반 해시 테이블 조회
 void *hash_table_get(struct HashTable *table, const char *key) {
     pthread_rwlock_rdlock(&table->rwlock);

@@ -26,10 +26,14 @@ void benchmark_test(struct LRUCache *cache) {
 int main() {
     struct LRUCache* cache = new_LRUCache_with_max_items(10000);
 
+    printf("benchmark started \n");
     // 성능 테스트
     benchmark_test(cache);
 
+    printf("benchmark finished\n");
     destroy_LRUCache(cache);
+
+    printf("destroy_LRUCache finished\n");
 
     return 0;
 }
