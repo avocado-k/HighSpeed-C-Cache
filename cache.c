@@ -6,11 +6,39 @@
 #include <stdio.h>
 
 
-// struct LRUCache {
-//     struct HashTable *table;
-//     size_t max_items;
-//     size_t current_items;
-// };
+
+void _remove_node(struct LRUCache *cache, struct LRUNode *node) {
+    if (node->prev) node->prev->next = node->next;
+    if (node->next) node->next->prev = node->prev;
+    if (node == cache->head) cache->head = node->next;
+    if (node == cache->tail) cache->tail = node->prev;
+}
+
+static void* _cleanup_thread(void *arg) {
+    struct LRUCache *cache = (struct LRUCache*)arg;
+    
+    while (cache->is_running) {
+        sleep(1);  // 1초마다 검사
+        pthread_mutex_lock(&cache->lock);
+        
+        struct LRUNode *current = cache->head;
+        while (current != NULL) {
+            struct LRUNode *next = current->next;
+            if (time(NULL) > current->expire) {
+                hash_table_remove(cache->table, current->key);
+                _remove_node(cache, current);  // 연결 리스트에서 노드 제거
+                free(current->key);
+                free(current);
+                cache->current_items--;
+            }
+            current = next;
+        }
+        
+        pthread_mutex_unlock(&cache->lock);
+    }
+    return NULL;
+}
+
 
 void _add_to_head(struct LRUCache *cache, struct LRUNode *node) {
     node->prev = NULL;
@@ -90,32 +118,7 @@ struct LRUCache *new_cache(struct HashTable *table, size_t max_items) {
 
   return cache;
 }
-/*
-struct LRUCache* new_LRUCache_with_max_items(size_t max_items) {
-  struct HashTable* table = new_hash_table_with_default();
 
-  struct LRUCache* cache = new_cache(table, max_items);
-
-  return cache;
-}
-*/
-
-/*
-void destroy_LRUCache(struct LRUCache* cache) {
-  destroy_hash_table(cache->table);
-  free(cache);
-}
-*/
-/*
-void putLRUCache(struct LRUCache* cache, const char *key, void *value, int ttl) {
-    hash_table_put_rcu(cache->table, key, value, ttl);
-}
-*/
-/*
-void *getLRUCache(struct LRUCache* cache, const char *key) {
-  return hash_table_get(cache->table, key);
-}
-*/
 
 void *getLRUCache(struct LRUCache* cache, const char *key) {
     pthread_mutex_lock(&cache->lock);
@@ -139,11 +142,16 @@ struct LRUCache* new_LRUCache_with_max_items(size_t max_items) {
     cache->max_items = max_items;
     cache->current_items = 0;
     pthread_mutex_init(&cache->lock, NULL);
+    cache->is_running = 1;
+    pthread_create(&cache->cleaner_thread, NULL, _cleanup_thread, cache);
+
     return cache;
 }
 
 #define SAFE_FREE(a) do { if (a) { free(a); (a) = NULL; } } while (0)
 void destroy_LRUCache(struct LRUCache* cache) {
+    cache->is_running = 0;
+    pthread_join(cache->cleaner_thread, NULL);  // 스레드 종료 대기
     pthread_mutex_lock(&cache->lock);
     
     struct LRUNode *current = cache->head;
@@ -158,5 +166,5 @@ void destroy_LRUCache(struct LRUCache* cache) {
     destroy_hash_table(cache->table);
     pthread_mutex_unlock(&cache->lock);
     pthread_mutex_destroy(&cache->lock);
-    free(cache);
+    SAFE_FREE(cache);
 }

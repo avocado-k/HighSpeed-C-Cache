@@ -20,6 +20,8 @@ struct LRUCache {
     size_t max_items;
     size_t current_items;
     pthread_mutex_t lock;  // 동시성 제어
+    pthread_t cleaner_thread;  
+    int is_running;            
 };
 
 struct LRUCache* new_LRUCache_with_max_items(size_t max_items);

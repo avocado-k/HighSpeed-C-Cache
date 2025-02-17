@@ -26,11 +26,32 @@ void benchmark_test(struct LRUCache *cache) {
 int main() {
     struct LRUCache* cache = new_LRUCache_with_max_items(10000);
 
+    int user_data = 42;
+    putLRUCache(cache, "user:123", &user_data, 5);  // 5초 후 만료
+
+    sleep(3);
+    int *data = (int*)getLRUCache(cache, "user:123");
+    if (data) {
+        printf("Data: %d\n", *data);  // 출력: Data: 42
+    } else {
+        printf("Data expired or not found.\n");
+    }
+
+    // 5초 후 데이터 접근 (만료됨)
+    sleep(5);
+    data = (int*)getLRUCache(cache, "user:123");
+    if (data) {
+        printf("Data: %d\n", *data);
+    } else {
+        printf("Data expired or not found.\n");  // 출력: Data expired or not found.
+    }
+    /*
     printf("benchmark started \n");
     // 성능 테스트
     benchmark_test(cache);
 
     printf("benchmark finished\n");
+    */
     destroy_LRUCache(cache);
 
     printf("destroy_LRUCache finished\n");
